@@ -27,9 +27,6 @@
 
 #include "video/mp_image.h"
 
-#if !HAVE_DXGI_DEBUG_D3D11
-DEFINE_GUID(DXGI_DEBUG_D3D11, 0x4b99317b, 0xac39, 0x4aa6, 0xbb, 0xb, 0xba, 0xa0, 0x47, 0x84, 0x79, 0x8f);
-#endif
 
 struct d3d11_device_opts {
     // Enable the debug layer (D3D11_CREATE_DEVICE_DEBUG)
@@ -127,3 +124,4 @@ DXGI_COLOR_SPACE_TYPE mp_params_to_dxgi_colorspace(struct mp_log *log,
                                                    const struct mp_image_params *params);
 
 #endif
+

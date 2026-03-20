@@ -1,0 +1,8 @@
+[wrap-git]
+url = https://github.com/harfbuzz/harfbuzz.git
+revision = main
+depth = 1
+clone-recursive = true
+
+[provide]
+dependency_names = harfbuzz

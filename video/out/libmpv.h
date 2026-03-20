@@ -34,6 +34,12 @@ struct render_backend {
     void *priv;
 };
 
+enum mp_render_call_type {
+    MP_RENDER_CALL_TYPE_VIDEO = 0,
+    MP_RENDER_CALL_TYPE_VIDEO_ONLY = 1,
+    MP_RENDER_CALL_TYPE_SUBTITLES_ONLY = 2,
+};
+
 // Generic backend for rendering via libmpv. This corresponds to vo/vo_driver,
 // except for rendering via the mpv_render_*() API. (As a consequence it's as
 // generic as the VO API.) Like with VOs, one backend can support multiple
@@ -74,10 +80,11 @@ struct render_backend_fns {
                            int *out_w, int *out_h);
     // Implementation of mpv_render_context_render().
     int (*render)(struct render_backend *ctx, mpv_render_param *params,
-                  struct vo_frame *frame);
+                  struct vo_frame *frame, enum mp_render_call_type call_type);
     // Free all data in ctx->priv.
     void (*destroy)(struct render_backend *ctx);
 };
 
 extern const struct render_backend_fns render_backend_gpu;
 extern const struct render_backend_fns render_backend_sw;
+

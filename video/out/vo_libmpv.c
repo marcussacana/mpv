@@ -333,7 +333,9 @@ bool mp_render_context_acquire(mpv_render_context *ctx)
     return atomic_compare_exchange_strong(&ctx->in_use, &prev, true);
 }
 
-int mpv_render_context_render(mpv_render_context *ctx, mpv_render_param *params)
+static int mpv_render_context_render_internal(mpv_render_context *ctx,
+                                              mpv_render_param *params,
+                                              enum mp_render_call_type call_type)
 {
     mp_mutex_lock(&ctx->lock);
 
@@ -404,12 +406,15 @@ int mpv_render_context_render(mpv_render_context *ctx, mpv_render_param *params)
 
     mp_mutex_unlock(&ctx->lock);
 
-    MP_STATS(ctx, "glcb-render");
+    MP_STATS(ctx, call_type == MP_RENDER_CALL_TYPE_SUBTITLES_ONLY ?
+                  "glcb-render-subs" :
+                  call_type == MP_RENDER_CALL_TYPE_VIDEO_ONLY ?
+                  "glcb-render-video-only" : "glcb-render");
 
     int err = 0;
 
     if (do_render)
-        err = ctx->renderer->fns->render(ctx->renderer, params, frame);
+        err = ctx->renderer->fns->render(ctx->renderer, params, frame, call_type);
 
     if (frame != &dummy)
         talloc_free(frame);
@@ -424,6 +429,26 @@ int mpv_render_context_render(mpv_render_context *ctx, mpv_render_param *params)
     }
 
     return err;
+}
+
+int mpv_render_context_render(mpv_render_context *ctx, mpv_render_param *params)
+{
+    return mpv_render_context_render_internal(ctx, params,
+                                              MP_RENDER_CALL_TYPE_VIDEO);
+}
+
+int mpv_render_context_render_video_only(mpv_render_context *ctx,
+                                        mpv_render_param *params)
+{
+    return mpv_render_context_render_internal(ctx, params,
+                                              MP_RENDER_CALL_TYPE_VIDEO_ONLY);
+}
+
+int mpv_render_context_render_subtitles(mpv_render_context *ctx,
+                                        mpv_render_param *params)
+{
+    return mpv_render_context_render_internal(ctx, params,
+                                              MP_RENDER_CALL_TYPE_SUBTITLES_ONLY);
 }
 
 void mpv_render_context_report_swap(mpv_render_context *ctx)
@@ -755,3 +780,4 @@ const struct vo_driver video_out_libmpv = {
     .uninit = uninit,
     .priv_size = sizeof(struct vo_priv),
 };
+

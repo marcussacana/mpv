@@ -3451,6 +3451,10 @@ void gl_video_render_frame(struct gl_video *p, struct vo_frame *frame,
     p->broken_frame = false;
 
     bool has_frame = !!frame->current;
+    bool subtitles_only = flags & RENDER_FRAME_SUBS_ONLY;
+
+    if (subtitles_only && frame->current)
+        p->osd_pts = frame->current->pts;
 
     struct m_color c = p->clear_color;
     float clear_color[4] = {c.r / 255.0, c.g / 255.0, c.b / 255.0, c.a / 255.0};
@@ -3459,7 +3463,10 @@ void gl_video_render_frame(struct gl_video *p, struct vo_frame *frame,
     clear_color[2] *= clear_color[3];
     p->ra->fns->clear(p->ra, fbo->tex, clear_color, &target_rc);
 
-    if (p->hwdec_overlay) {
+    if (subtitles_only)
+        has_frame = false;
+
+    if (p->hwdec_overlay && !subtitles_only) {
         if (has_frame) {
             float *color = p->hwdec_overlay->overlay_colorkey;
             p->ra->fns->clear(p->ra, fbo->tex, color, &p->dst_rect);

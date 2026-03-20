@@ -709,6 +709,33 @@ typedef enum mpv_render_update_flag {
 MPV_EXPORT int mpv_render_context_render(mpv_render_context *ctx, mpv_render_param *params);
 
 /**
+ * NewAxis extension: render only the currently selected subtitles to the
+ * target surface. The video frame itself is not drawn.
+ *
+ * This behaves like mpv_render_context_render(), but clears the target to
+ * transparent black first and then draws only subtitle content.
+ *
+ * @param ctx a valid render context
+ * @param params an array of parameters, terminated by type==0. Which parameters
+ *               are required depends on the backend. It's left unspecified what
+ *               happens with unknown parameters.
+ * @return error code
+ */
+/**
+ * NewAxis extension: render only the video frame to the target surface.
+ * Subtitle and OSD content are not drawn.
+ *
+ * @param ctx a valid render context
+ * @param params an array of parameters, terminated by type==0. Which parameters
+ *               are required depends on the backend. It's left unspecified what
+ *               happens with unknown parameters.
+ * @return error code
+ */
+MPV_EXPORT int mpv_render_context_render_video_only(mpv_render_context *ctx, mpv_render_param *params);
+
+MPV_EXPORT int mpv_render_context_render_subtitles(mpv_render_context *ctx, mpv_render_param *params);
+
+/**
  * Tell the renderer that a frame was flipped at the given time. This is
  * optional, but can help the player to achieve better timing.
  *
@@ -746,6 +773,10 @@ MPV_DEFINE_SYM_PTR(mpv_render_context_update)
 #define mpv_render_context_update pfn_mpv_render_context_update
 MPV_DEFINE_SYM_PTR(mpv_render_context_render)
 #define mpv_render_context_render pfn_mpv_render_context_render
+MPV_DEFINE_SYM_PTR(mpv_render_context_render_video_only)
+#define mpv_render_context_render_video_only pfn_mpv_render_context_render_video_only
+MPV_DEFINE_SYM_PTR(mpv_render_context_render_subtitles)
+#define mpv_render_context_render_subtitles pfn_mpv_render_context_render_subtitles
 MPV_DEFINE_SYM_PTR(mpv_render_context_report_swap)
 #define mpv_render_context_report_swap pfn_mpv_render_context_report_swap
 MPV_DEFINE_SYM_PTR(mpv_render_context_free)
@@ -758,3 +789,4 @@ MPV_DEFINE_SYM_PTR(mpv_render_context_free)
 #endif
 
 #endif
+

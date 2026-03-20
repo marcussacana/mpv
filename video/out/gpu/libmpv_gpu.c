@@ -169,7 +169,7 @@ static int get_target_size(struct render_backend *ctx, mpv_render_param *params,
 }
 
 static int render(struct render_backend *ctx, mpv_render_param *params,
-                  struct vo_frame *frame)
+                  struct vo_frame *frame, enum mp_render_call_type call_type)
 {
     struct priv *p = ctx->priv;
 
@@ -187,7 +187,17 @@ static int render(struct render_backend *ctx, mpv_render_param *params,
                                              &(int){0});
 
     struct ra_fbo target = {.tex = tex, .flip = flip};
-    gl_video_render_frame(p->renderer, frame, &target, RENDER_FRAME_DEF);
+    if (call_type == MP_RENDER_CALL_TYPE_SUBTITLES_ONLY) {
+        gl_video_set_clear_color(p->renderer, (struct m_color){0, 0, 0, 0});
+        gl_video_render_frame(p->renderer, frame, &target,
+                              RENDER_FRAME_SUBS | RENDER_FRAME_SUBS_ONLY);
+    } else if (call_type == MP_RENDER_CALL_TYPE_VIDEO_ONLY) {
+        gl_video_set_clear_color(p->renderer, (struct m_color){0, 0, 0, 255});
+        gl_video_render_frame(p->renderer, frame, &target, RENDER_SCREEN_COLOR);
+    } else {
+        gl_video_set_clear_color(p->renderer, (struct m_color){0, 0, 0, 255});
+        gl_video_render_frame(p->renderer, frame, &target, RENDER_FRAME_DEF);
+    }
     p->context->fns->done_frame(p->context, frame->display_synced);
 
     return 0;
@@ -248,3 +258,4 @@ const struct render_backend_fns render_backend_gpu = {
     .perfdata = perfdata,
     .destroy = destroy,
 };
+

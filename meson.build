@@ -1777,7 +1777,7 @@ features += {'libmpv-' + get_option('default_library'): get_option('libmpv')}
 # build targets
 if win32
     windows = import('windows')
-    res_flags = ['--codepage=65001']
+    res_flags = ['/c65001']
 
     # Unintuitively, this compile operates out of the osdep subdirectory.
     # Hence, these includes are needed.
@@ -1916,3 +1916,4 @@ summary({'cocoa': features['cocoa'] and features['swift'],
          'wayland': features['wayland'],
          'x11': features['x11']},
          bool_yn: true)
+

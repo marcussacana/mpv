@@ -94,7 +94,7 @@ static int get_target_size(struct render_backend *ctx, mpv_render_param *params,
 }
 
 static int render(struct render_backend *ctx, mpv_render_param *params,
-                  struct vo_frame *frame)
+                  struct vo_frame *frame, enum mp_render_call_type call_type)
 {
     struct priv *p = ctx->priv;
 
@@ -160,7 +160,8 @@ static int render(struct render_backend *ctx, mpv_render_param *params,
     wrap_img.planes[0] = ptr;
     wrap_img.stride[0] = *stride;
 
-    struct mp_image *img = frame->current;
+    struct mp_image *img =
+        call_type == MP_RENDER_CALL_TYPE_SUBTITLES_ONLY ? NULL : frame->current;
     if (img) {
         mp_assert(p->src_params.imgfmt);
 
@@ -183,8 +184,12 @@ static int render(struct render_backend *ctx, mpv_render_param *params,
         mp_image_clear(&wrap_img, 0, 0, wrap_img.w, wrap_img.h);
     }
 
-    if (p->osd)
-        osd_draw_on_image(p->osd, p->osd_rc, img ? img->pts : 0, 0, &wrap_img);
+    if (p->osd && call_type != MP_RENDER_CALL_TYPE_VIDEO_ONLY) {
+        int draw_flags =
+            call_type == MP_RENDER_CALL_TYPE_SUBTITLES_ONLY ? OSD_DRAW_SUB_ONLY : 0;
+        osd_draw_on_image(p->osd, p->osd_rc, frame->current ? frame->current->pts : 0,
+                          draw_flags, &wrap_img);
+    }
 
     return 0;
 }
@@ -206,3 +211,4 @@ const struct render_backend_fns render_backend_sw = {
     .render = render,
     .destroy = destroy,
 };
+
