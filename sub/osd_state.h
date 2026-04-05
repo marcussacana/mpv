@@ -2,6 +2,7 @@
 #define MP_OSD_STATE_H_
 
 #include <stdatomic.h>
+#include <stdint.h>
 
 #include "osd.h"
 #include "osdep/threads.h"
@@ -75,6 +76,7 @@ struct osd_state {
 
     bool want_redraw;
     bool want_redraw_notification;
+    uint64_t subtitle_redraw_id;
 
     struct m_config_cache *opts_cache;
     struct mp_osd_render_opts *opts;

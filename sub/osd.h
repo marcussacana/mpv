@@ -188,9 +188,11 @@ struct dec_sub;
 
 struct osd_state *osd_create(struct mpv_global *global);
 void osd_changed(struct osd_state *osd);
+void osd_subtitles_changed(struct osd_state *osd);
 void osd_free(struct osd_state *osd);
 
 bool osd_query_and_reset_want_redraw(struct osd_state *osd);
+uint64_t osd_get_subtitles_redraw_id(struct osd_state *osd);
 
 void osd_set_text(struct osd_state *osd, const char *text);
 void osd_set_sub(struct osd_state *osd, int index, struct dec_sub *dec_sub);

@@ -166,6 +166,7 @@ struct osd_state *osd_create(struct mpv_global *global)
         .log = mp_log_new(osd, global->log, "osd"),
         .force_video_pts = MP_NOPTS_VALUE,
         .stats = stats_ctx_create(osd, global, "osd"),
+        .subtitle_redraw_id = 1,
     };
     mp_mutex_init(&osd->lock);
     osd->opts = osd->opts_cache->opts;
@@ -220,6 +221,7 @@ void osd_set_sub(struct osd_state *osd, int index, struct dec_sub *dec_sub)
         obj->sub = dec_sub;
         obj->vo_change_id += 1;
     }
+    osd->subtitle_redraw_id += 1;
     osd->want_redraw_notification = true;
     mp_mutex_unlock(&osd->lock);
 }
@@ -505,9 +507,18 @@ void osd_changed(struct osd_state *osd)
 {
     mp_mutex_lock(&osd->lock);
     osd->objs[OSDTYPE_OSD]->osd_changed = true;
+    osd->subtitle_redraw_id += 1;
     osd->want_redraw_notification = true;
     // Done here for a lack of a better place.
     m_config_cache_update(osd->opts_cache);
+    mp_mutex_unlock(&osd->lock);
+}
+
+void osd_subtitles_changed(struct osd_state *osd)
+{
+    mp_mutex_lock(&osd->lock);
+    osd->subtitle_redraw_id += 1;
+    osd->want_redraw_notification = true;
     mp_mutex_unlock(&osd->lock);
 }
 
@@ -518,6 +529,14 @@ bool osd_query_and_reset_want_redraw(struct osd_state *osd)
     osd->want_redraw_notification = false;
     mp_mutex_unlock(&osd->lock);
     return r;
+}
+
+uint64_t osd_get_subtitles_redraw_id(struct osd_state *osd)
+{
+    mp_mutex_lock(&osd->lock);
+    uint64_t id = osd->subtitle_redraw_id;
+    mp_mutex_unlock(&osd->lock);
+    return id;
 }
 
 struct mp_osd_res osd_get_vo_res(struct osd_state *osd)

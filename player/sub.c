@@ -62,6 +62,8 @@ void redraw_subs(struct MPContext *mpctx)
             mpctx->current_track[n][STREAM_SUB]->redraw_subs = true;
         }
     }
+    if (mpctx->osd)
+        osd_subtitles_changed(mpctx->osd);
 }
 
 void reset_subtitle_state(struct MPContext *mpctx)
@@ -131,6 +133,9 @@ static bool update_subtitle(struct MPContext *mpctx, double video_pts,
     // Check if we need to update subtitles for these special cases. Always
     // update on discontinuities like seeking or a new file.
     if (sub_updated || track->redraw_subs || osd_pts == MP_NOPTS_VALUE) {
+        if (mpctx->osd && (sub_updated || track->redraw_subs))
+            osd_subtitles_changed(mpctx->osd);
+
         // Always force a redecode of all packets if we seek on a still image.
         if (track->redraw_subs && still_image)
             sub_redecode_cached_packets(dec_sub);

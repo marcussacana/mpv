@@ -159,6 +159,8 @@ struct gl_video {
     struct osd_state *osd_state;
     struct mpgl_osd *osd;
     double osd_pts;
+    uint64_t subtitle_redraw_id;
+    bool subtitle_cache_valid;
 
     struct ra_tex *lut_3d_texture;
     bool use_lut_3d;
@@ -620,6 +622,7 @@ static void gl_video_reset_surfaces(struct gl_video *p)
     p->surface_now = 0;
     p->frames_drawn = 0;
     p->output_tex_valid = false;
+    p->subtitle_cache_valid = false;
 }
 
 static void gl_video_reset_hooks(struct gl_video *p)
@@ -3028,7 +3031,8 @@ static void pass_draw_osd(struct gl_video *p, int osd_flags, int frame_flags,
     if ((osd_flags & OSD_DRAW_SUB_ONLY) && (osd_flags & OSD_DRAW_OSD_ONLY))
         return;
 
-    mpgl_osd_generate(p->osd, rect, pts, p->image_params.stereo3d, osd_flags);
+    int stereo_mode = (frame_flags & RENDER_FRAME_SUBS_ONLY) ? 0 : p->image_params.stereo3d;
+    mpgl_osd_generate(p->osd, rect, pts, stereo_mode, osd_flags);
 
     timer_pool_start(p->osd_timer);
     for (int n = 0; n < MAX_OSD_PARTS; n++) {
@@ -3456,6 +3460,20 @@ void gl_video_render_frame(struct gl_video *p, struct vo_frame *frame,
     if (subtitles_only && frame->current)
         p->osd_pts = frame->current->pts;
 
+    if (subtitles_only && p->osd_state) {
+        // Reuse the previous subtitle frame until mpv reports that subtitle
+        // state changed. This avoids re-running the subtitle pass every frame.
+        uint64_t subtitle_redraw_id =
+            osd_get_subtitles_redraw_id(p->osd_state);
+        if (p->subtitle_cache_valid &&
+            p->subtitle_redraw_id == subtitle_redraw_id)
+        {
+            return;
+        }
+        p->subtitle_redraw_id = subtitle_redraw_id;
+        p->subtitle_cache_valid = false;
+    }
+
     struct m_color c = p->clear_color;
     float clear_color[4] = {c.r / 255.0, c.g / 255.0, c.b / 255.0, c.a / 255.0};
     clear_color[0] *= clear_color[3];
@@ -3577,6 +3595,8 @@ done:
         // error has occurred
         float color[4] = {0.0, 0.05, 0.5, 1.0};
         p->ra->fns->clear(p->ra, fbo->tex, color, &target_rc);
+    } else if (subtitles_only) {
+        p->subtitle_cache_valid = true;
     }
 
     p->frames_rendered++;
