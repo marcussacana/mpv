@@ -215,6 +215,7 @@ void gl_video_set_clear_color(struct gl_video *p, struct m_color color);
 void gl_video_set_osd_pts(struct gl_video *p, double pts);
 bool gl_video_check_osd_change(struct gl_video *p, struct mp_osd_res *osd,
                                double pts);
+uint64_t gl_video_get_subtitles_redraw_id(struct gl_video *p);
 
 void gl_video_screenshot(struct gl_video *p, struct vo_frame *frame,
                          struct voctrl_screenshot *args);

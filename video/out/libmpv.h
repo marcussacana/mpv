@@ -78,6 +78,8 @@ struct render_backend_fns {
     // Get target surface size from mpv_render_context_render() arguments.
     int (*get_target_size)(struct render_backend *ctx, mpv_render_param *params,
                            int *out_w, int *out_h);
+    // Return a redraw identifier for the currently selected subtitles.
+    uint64_t (*get_subtitles_redraw_id)(struct render_backend *ctx);
     // Implementation of mpv_render_context_render().
     int (*render)(struct render_backend *ctx, mpv_render_param *params,
                   struct vo_frame *frame, enum mp_render_call_type call_type);

@@ -49,6 +49,7 @@ static void reset_subtitles(struct MPContext *mpctx, struct track *track)
     if (track->d_sub) {
         sub_reset(track->d_sub);
         sub_set_play_dir(track->d_sub, mpctx->play_dir);
+        sub_mark_render_state_changed(track->d_sub);
     }
 }
 
@@ -135,6 +136,8 @@ static bool update_subtitle(struct MPContext *mpctx, double video_pts,
     if (sub_updated || track->redraw_subs || osd_pts == MP_NOPTS_VALUE) {
         if (mpctx->osd && (sub_updated || track->redraw_subs))
             osd_subtitles_changed(mpctx->osd);
+        if (track->redraw_subs)
+            sub_mark_render_state_changed(dec_sub);
 
         // Always force a redecode of all packets if we seek on a still image.
         if (track->redraw_subs && still_image)

@@ -535,6 +535,13 @@ uint64_t osd_get_subtitles_redraw_id(struct osd_state *osd)
 {
     mp_mutex_lock(&osd->lock);
     uint64_t id = osd->subtitle_redraw_id;
+    for (int n = 0; n < 2; n++) {
+        struct osd_object *obj = osd->objs[OSDTYPE_SUB + n];
+        if (obj && obj->sub) {
+            uint64_t sub_id = sub_get_render_state_id(obj->sub);
+            id ^= sub_id + UINT64_C(0x9e3779b97f4a7c15) + (id << 6) + (id >> 2);
+        }
+    }
     mp_mutex_unlock(&osd->lock);
     return id;
 }

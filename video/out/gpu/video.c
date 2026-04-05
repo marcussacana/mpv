@@ -3021,18 +3021,36 @@ static void pass_dither(struct gl_video *p, const struct ra_fbo *fbo)
 
 // Draws the OSD, in scene-referred colors.. If cms is true, subtitles are
 // instead adapted to the display's gamut.
-static void pass_draw_osd(struct gl_video *p, int osd_flags, int frame_flags,
+static bool pass_draw_osd(struct gl_video *p, int osd_flags, int frame_flags,
                           double pts, struct mp_osd_res rect, const struct ra_fbo *fbo,
-                          bool cms)
+                          bool cms, bool clear_target)
 {
     if (frame_flags & RENDER_FRAME_VF_SUBS)
         osd_flags |= OSD_DRAW_SUB_FILTER;
 
     if ((osd_flags & OSD_DRAW_SUB_ONLY) && (osd_flags & OSD_DRAW_OSD_ONLY))
-        return;
+        return false;
+
+    if (clear_target) {
+        struct mp_rect target_rc = {0, 0, fbo->tex->params.w, fbo->tex->params.h};
+        float clear_color[4] = {0.0, 0.0, 0.0, 0.0};
+        p->ra->fns->clear(p->ra, fbo->tex, clear_color, &target_rc);
+    }
 
     int stereo_mode = (frame_flags & RENDER_FRAME_SUBS_ONLY) ? 0 : p->image_params.stereo3d;
     mpgl_osd_generate(p->osd, rect, pts, stereo_mode, osd_flags);
+
+    bool has_output = false;
+    for (int n = 0; n < MAX_OSD_PARTS; n++) {
+        if (mpgl_osd_draw_prepare(p->osd, n, p->sc)) {
+            has_output = true;
+            break;
+        }
+    }
+
+    if (!has_output) {
+        return false;
+    }
 
     timer_pool_start(p->osd_timer);
     for (int n = 0; n < MAX_OSD_PARTS; n++) {
@@ -3057,6 +3075,7 @@ static void pass_draw_osd(struct gl_video *p, int osd_flags, int frame_flags,
     pass_describe(p, "drawing osd");
     struct mp_pass_perf perf = timer_pool_measure(p->osd_timer);
     pass_record(p, &perf);
+    return true;
 }
 
 static float chroma_realign(int size, int pixel)
@@ -3146,7 +3165,7 @@ static bool pass_render_frame(struct gl_video *p, struct mp_image *mpi,
         };
         finish_pass_tex(p, &p->blend_subs_tex, rect.w, rect.h);
         struct ra_fbo fbo = { p->blend_subs_tex };
-        pass_draw_osd(p, OSD_DRAW_SUB_ONLY, flags, vpts, rect, &fbo, false);
+        pass_draw_osd(p, OSD_DRAW_SUB_ONLY, flags, vpts, rect, &fbo, false, true);
         pass_read_tex(p, p->blend_subs_tex);
         pass_describe(p, "blend subs video");
     }
@@ -3178,7 +3197,7 @@ static bool pass_render_frame(struct gl_video *p, struct mp_image *mpi,
         }
         finish_pass_tex(p, &p->blend_subs_tex, p->texture_w, p->texture_h);
         struct ra_fbo fbo = { p->blend_subs_tex };
-        pass_draw_osd(p, OSD_DRAW_SUB_ONLY, flags, vpts, rect, &fbo, false);
+        pass_draw_osd(p, OSD_DRAW_SUB_ONLY, flags, vpts, rect, &fbo, false, true);
         pass_read_tex(p, p->blend_subs_tex);
         pass_describe(p, "blend subs");
     }
@@ -3479,7 +3498,8 @@ void gl_video_render_frame(struct gl_video *p, struct vo_frame *frame,
     clear_color[0] *= clear_color[3];
     clear_color[1] *= clear_color[3];
     clear_color[2] *= clear_color[3];
-    p->ra->fns->clear(p->ra, fbo->tex, clear_color, &target_rc);
+    if (!subtitles_only)
+        p->ra->fns->clear(p->ra, fbo->tex, clear_color, &target_rc);
 
     if (subtitles_only)
         has_frame = false;
@@ -3585,7 +3605,7 @@ done:
         if (!(flags & RENDER_FRAME_OSD))
             osd_flags |= OSD_DRAW_SUB_ONLY;
 
-        pass_draw_osd(p, osd_flags, flags, p->osd_pts, p->osd_rect, fbo, true);
+        pass_draw_osd(p, osd_flags, flags, p->osd_pts, p->osd_rect, fbo, true, subtitles_only);
         debug_check_gl(p, "after OSD rendering");
     }
 
@@ -3725,6 +3745,13 @@ void gl_video_set_clear_color(struct gl_video *p, struct m_color c)
 void gl_video_set_osd_pts(struct gl_video *p, double pts)
 {
     p->osd_pts = pts;
+}
+
+uint64_t gl_video_get_subtitles_redraw_id(struct gl_video *p)
+{
+    if (!p || !p->osd_state)
+        return 0;
+    return osd_get_subtitles_redraw_id(p->osd_state);
 }
 
 bool gl_video_check_osd_change(struct gl_video *p, struct mp_osd_res *res,

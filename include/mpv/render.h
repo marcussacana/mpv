@@ -613,6 +613,15 @@ MPV_EXPORT int mpv_render_context_set_parameter(mpv_render_context *ctx,
 MPV_EXPORT int mpv_render_context_get_info(mpv_render_context *ctx,
                                            mpv_render_param param);
 
+/**
+ * Return a redraw identifier for the currently selected subtitles.
+ *
+ * The value changes whenever the subtitle output changes in a way that affects
+ * the rendered bitmap. A return value of 0 indicates that the backend does not
+ * provide this information.
+ */
+MPV_EXPORT uint64_t mpv_render_context_get_subtitles_redraw_id(mpv_render_context *ctx);
+
 typedef void (*mpv_render_update_fn)(void *cb_ctx);
 
 /**
@@ -767,6 +776,8 @@ MPV_DEFINE_SYM_PTR(mpv_render_context_set_parameter)
 #define mpv_render_context_set_parameter pfn_mpv_render_context_set_parameter
 MPV_DEFINE_SYM_PTR(mpv_render_context_get_info)
 #define mpv_render_context_get_info pfn_mpv_render_context_get_info
+MPV_DEFINE_SYM_PTR(mpv_render_context_get_subtitles_redraw_id)
+#define mpv_render_context_get_subtitles_redraw_id pfn_mpv_render_context_get_subtitles_redraw_id
 MPV_DEFINE_SYM_PTR(mpv_render_context_set_update_callback)
 #define mpv_render_context_set_update_callback pfn_mpv_render_context_set_update_callback
 MPV_DEFINE_SYM_PTR(mpv_render_context_update)

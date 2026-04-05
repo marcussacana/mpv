@@ -168,6 +168,13 @@ static int get_target_size(struct render_backend *ctx, mpv_render_param *params,
     return 0;
 }
 
+static uint64_t get_subtitles_redraw_id(struct render_backend *ctx)
+{
+    struct priv *p = ctx->priv;
+
+    return gl_video_get_subtitles_redraw_id(p->renderer);
+}
+
 static int render(struct render_backend *ctx, mpv_render_param *params,
                   struct vo_frame *frame, enum mp_render_call_type call_type)
 {
@@ -252,6 +259,7 @@ const struct render_backend_fns render_backend_gpu = {
     .update_external = update_external,
     .resize = resize,
     .get_target_size = get_target_size,
+    .get_subtitles_redraw_id = get_subtitles_redraw_id,
     .render = render,
     .get_image = get_image,
     .screenshot = screenshot,

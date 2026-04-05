@@ -79,6 +79,7 @@ struct dec_sub {
 
     double last_vo_pts;
     struct sd *sd;
+    uint64_t render_state_id;
 
     struct demux_packet *new_segment;
     struct demux_packet **cached_pkts;
@@ -214,6 +215,7 @@ struct dec_sub *sub_create(struct mpv_global *global, struct track *track,
         .last_vo_pts = MP_NOPTS_VALUE,
         .start = MP_NOPTS_VALUE,
         .end = MP_NOPTS_VALUE,
+        .render_state_id = 1,
     };
     sub->opts = sub->opts_cache->opts;
     sub->shared_opts = sub->shared_opts_cache->opts;
@@ -328,8 +330,7 @@ static bool update_pkt_cache(struct dec_sub *sub, double video_pts)
             pkt = NULL;
             sub->cached_pkt_pos++;
         }
-        if (next_pts < pts)
-            return true;
+        return true;
     }
 
     if (pkt && pkt->animated == 1)
@@ -398,9 +399,18 @@ void sub_read_packets(struct dec_sub *sub, double video_pts, bool force,
             sub->sd->driver->decode(sub->sd, pkt);
     }
     if (sub->cached_pkts && sub->num_cached_pkts) {
-        bool visible = is_packet_visible(sub->cached_pkts[sub->cached_pkt_pos], video_pts);
-        *sub_updated = update_pkt_cache(sub, video_pts) || sub->sub_visible != visible;
+        bool pkt_updated = update_pkt_cache(sub, video_pts);
+        bool visible = false;
+        if (sub->cached_pkts && sub->num_cached_pkts &&
+            sub->cached_pkts[sub->cached_pkt_pos])
+        {
+            visible = is_packet_visible(sub->cached_pkts[sub->cached_pkt_pos], video_pts);
+        }
+
+        *sub_updated = pkt_updated || sub->sub_visible != visible;
         sub->sub_visible = visible;
+        if (*sub_updated)
+            sub->render_state_id += 1;
     }
     mp_mutex_unlock(&sub->lock);
 }
@@ -415,7 +425,23 @@ void sub_redecode_cached_packets(struct dec_sub *sub)
         sub->sd->driver->decode(sub->sd, sub->cached_pkts[index]);
         ++index;
     }
+    sub->render_state_id += 1;
     mp_mutex_unlock(&sub->lock);
+}
+
+void sub_mark_render_state_changed(struct dec_sub *sub)
+{
+    mp_mutex_lock(&sub->lock);
+    sub->render_state_id += 1;
+    mp_mutex_unlock(&sub->lock);
+}
+
+uint64_t sub_get_render_state_id(struct dec_sub *sub)
+{
+    mp_mutex_lock(&sub->lock);
+    uint64_t id = sub->render_state_id;
+    mp_mutex_unlock(&sub->lock);
+    return id;
 }
 
 // Unref sub_bitmaps.rc to free the result. May return NULL.
@@ -497,6 +523,7 @@ void sub_reset(struct dec_sub *sub)
     destroy_cached_pkts(sub);
     demux_packet_pool_push(sub->packet_pool, sub->new_segment);
     sub->new_segment = NULL;
+    sub->render_state_id += 1;
     mp_mutex_unlock(&sub->lock);
 }
 
@@ -505,6 +532,7 @@ void sub_select(struct dec_sub *sub, bool selected)
     mp_mutex_lock(&sub->lock);
     if (sub->sd->driver->select)
         sub->sd->driver->select(sub->sd, selected);
+    sub->render_state_id += 1;
     mp_mutex_unlock(&sub->lock);
 }
 
@@ -540,6 +568,7 @@ int sub_control(struct dec_sub *sub, enum sd_ctrl cmd, void *arg)
             // that clears all preloaded sub packets
             sub->preload_attempted = false;
         }
+        sub->render_state_id += 1;
         break;
     }
     default:

@@ -510,6 +510,18 @@ int mpv_render_context_get_info(mpv_render_context *ctx,
     return res;
 }
 
+uint64_t mpv_render_context_get_subtitles_redraw_id(mpv_render_context *ctx)
+{
+    uint64_t res = 0;
+
+    mp_mutex_lock(&ctx->lock);
+    if (ctx->renderer && ctx->renderer->fns->get_subtitles_redraw_id)
+        res = ctx->renderer->fns->get_subtitles_redraw_id(ctx->renderer);
+    mp_mutex_unlock(&ctx->lock);
+
+    return res;
+}
+
 static bool draw_frame(struct vo *vo, struct vo_frame *frame)
 {
     struct vo_priv *p = vo->priv;
